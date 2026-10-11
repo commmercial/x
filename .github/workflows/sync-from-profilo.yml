@@ -1,4 +1,4 @@
-name: Sync from profilo
+name: Sync profilo into x
 
 on:
   push:
