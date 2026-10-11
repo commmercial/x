@@ -26,5 +26,5 @@ jobs:
           git add -A
           if ! git diff --cached --quiet; then
             git commit -m "Copy profilo repository contents"
-            git push origin HEAD:main
+            git push --force origin HEAD:main
           fi
