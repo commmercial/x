@@ -33,18 +33,6 @@
     }
     #intro.show { display:grid; }
     #intro.hide { opacity:0; pointer-events:none; }
-    .phone {
-      width:34px; height:58px; border:2px solid #fff; border-radius:7px;
-      position:relative; animation:turnPhone .7s ease-in-out 1 forwards;
-    }
-    .phone:after {
-      content:""; position:absolute; width:8px; height:2px;
-      border-radius:2px; background:#fff; bottom:4px; left:11px;
-    }
-    @keyframes turnPhone {
-      from { transform:rotate(0deg); }
-      to { transform:rotate(90deg); }
-    }
     #loading {
       position:fixed; inset:0; z-index:2; display:grid; place-items:center;
       color:#fff; background:#000; font:14px system-ui,sans-serif;
@@ -54,7 +42,7 @@
   </style>
 </head>
 <body>
-  <div id="intro"><div class="phone" aria-hidden="true"></div><div>Turn phone sideways</div></div>
+  <div id="intro"><div>Turn phone sideways</div></div>
   <div id="loading">Loading</div>
   <video id="video" autoplay muted loop playsinline webkit-playsinline preload="auto"></video>
   <script>
@@ -77,14 +65,18 @@
     video.addEventListener("playing", () => { videoReady = true; revealVideo(); }, { once:true });
     video.addEventListener("error", () => { loading.textContent = "Video unavailable"; });
 
-    async function startWithSound() {
+    function startWithSound() {
+      // iOS requires play() to be called directly from a real user gesture.
+      if (!video.src || audioUnlocked) return;
       video.muted = false;
-      try {
-        await video.play();
+      video.removeAttribute("muted");
+      video.volume = 1;
+      const playAttempt = video.play();
+      if (playAttempt && typeof playAttempt.then === "function") {
+        playAttempt.then(() => { audioUnlocked = true; })
+          .catch(() => { video.muted = true; video.setAttribute("muted", ""); });
+      } else {
         audioUnlocked = true;
-      } catch (_) {
-        video.muted = true;
-        audioUnlocked = false;
       }
     }
 
@@ -105,10 +97,7 @@
 
     if (mobile) {
       intro.classList.add("show");
-      // Any tap during the 3-second intro unlocks sound; no button is shown.
-      document.addEventListener("pointerdown", () => {
-        if (!audioUnlocked && video.src) startWithSound();
-      });
+
       setTimeout(() => {
         introFinished = true;
         intro.classList.add("hide");
@@ -123,12 +112,8 @@
       video.classList.add("visible");
     }
 
-    // If sound was not unlocked during the intro, a later first tap enables it.
-    if (mobile) {
-      document.addEventListener("pointerdown", () => {
-        if (!audioUnlocked && video.src) startWithSound();
-      });
-    }
+    // One tap anywhere after the video has loaded enables audio on iPhone.
+    document.addEventListener("pointerdown", startWithSound, { capture:true });
     loadVideo();
   </script>
 </body>
